@@ -1,0 +1,63 @@
+{
+  "model_name": "CyberShield URL Phishing Classifier (Random Forest)",
+  "model_type": "RandomForestClassifier",
+  "version": "1.0.0",
+  "training_date": "2026-10-09T04:06:59.236635+00:00",
+  "train_samples": 360,
+  "test_samples": 90,
+  "feature_count": 24,
+  "features": [
+    "url_length",
+    "hostname_length",
+    "path_length",
+    "dot_count",
+    "host_dot_count",
+    "hyphen_count",
+    "host_hyphen_count",
+    "at_symbol_count",
+    "slash_count",
+    "double_slash_in_path",
+    "subdomain_count",
+    "special_char_count",
+    "percent_count",
+    "keyword_count",
+    "query_param_count",
+    "host_digit_ratio",
+    "is_https",
+    "is_ip",
+    "has_punycode",
+    "is_shortener",
+    "is_suspicious_tld",
+    "has_brand_impersonation",
+    "has_dangerous_ext",
+    "has_excessive_subdomains"
+  ],
+  "feature_importances": {
+    "is_https": 0.2862,
+    "hyphen_count": 0.154,
+    "hostname_length": 0.1331,
+    "host_hyphen_count": 0.1327,
+    "keyword_count": 0.0691,
+    "is_suspicious_tld": 0.0642,
+    "special_char_count": 0.0366,
+    "has_brand_impersonation": 0.0316,
+    "url_length": 0.0197,
+    "slash_count": 0.0154
+  },
+  "metrics": {
+    "accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1_score": 1.0,
+    "roc_auc": 1.0,
+    "brier_score": 0.0001,
+    "false_positive_rate": 0.0,
+    "false_negative_rate": 0.0,
+    "confusion_matrix": {
+      "true_negative": 50,
+      "false_positive": 0,
+      "false_negative": 0,
+      "true_positive": 40
+    }
+  }
+}

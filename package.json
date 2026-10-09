@@ -1,0 +1,12 @@
+{
+  "name": "cybershield-ai-root",
+  "version": "1.0.0",
+  "description": "CyberShield AI — Detect the Threat. Understand the Risk. Stay Safe.",
+  "scripts": {
+    "install:all": "npm --prefix backend install && npm --prefix frontend install",
+    "test:backend": "npm --prefix backend test",
+    "test:ai": "cd ai-service && python -m pytest app/tests",
+    "build:frontend": "npm --prefix frontend run build",
+    "train:ai": "cd ai-service && python -m app.training.train_models"
+  }
+}
