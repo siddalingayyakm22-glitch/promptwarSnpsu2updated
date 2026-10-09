@@ -46,6 +46,12 @@ async function analyzeURL(inputUrl) {
 
   // 1. SSRF Safety Assessment
   const ssrfCheck = isSafePublicTarget(hostname);
+  if (!ssrfCheck.safe) {
+    const error = new Error(`Access to private, localhost, or internal target '${hostname}' is prohibited: ${ssrfCheck.reason}`);
+    error.code = 'SSRF_BLOCKED';
+    error.statusCode = 400;
+    throw error;
+  }
 
   const indicators = [];
   let heuristicScore = 0;

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Globe, MessageSquare, Mail, QrCode, Bot, Shield,
-  ArrowRight, CheckCircle2, Lock, Activity, AlertTriangle, Play
+  ArrowRight, Activity, AlertTriangle, Play
 } from 'lucide-react';
 import { DemoCasesModal } from '../components/DemoCasesModal';
 import { api } from '../services/api';

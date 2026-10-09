@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Settings, Shield, Lock, Trash2, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Settings, Lock, Trash2, CheckCircle2 } from 'lucide-react';
+import { PageHeader } from '../components/PageHeader';
 import { api } from '../services/api';
 
 export const PrivacySettingsPage: React.FC = () => {
@@ -22,15 +23,12 @@ export const PrivacySettingsPage: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-          <Settings size={24} color="var(--color-cyan)" />
-          <h1 style={{ fontSize: '24px', fontWeight: 800 }}>Privacy & Application Settings</h1>
-        </div>
-        <p style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
-          Review privacy disclosures, zero-log data governance, and manage your local data footprint.
-        </p>
-      </div>
+      <PageHeader
+        title="Privacy & Application Settings"
+        description="Review privacy disclosures, zero-log data governance, and manage your local data footprint."
+        icon={Settings}
+        badgeText="Zero-Log Governance"
+      />
 
       {/* Privacy Architecture Statement */}
       <div className="cyber-card" style={{ borderLeft: '4px solid var(--color-safe)' }}>

@@ -6,12 +6,18 @@
 
 // Prompt injection patterns to neutralize
 const INJECTION_PATTERNS = [
-  /ignore previous instructions/i,
-  /disregard all earlier prompts/i,
-  /system override/i,
-  /you are now in developer mode/i,
-  /reveal your system instructions/i,
-  /bypass safety filters/i
+  /ignore\s+(?:all\s+)?(?:previous|prior)\s+(?:instructions|prompts)/i,
+  /disregard\s+(?:all\s+)?(?:earlier|previous)\s+(?:prompts|instructions)/i,
+  /system\s+(?:override|prompt|instructions)/i,
+  /(?:you\s+are\s+(?:now\s+in|in)|switch\s+to|enter)\s+(?:developer|dan|jailbreak|unrestricted)\s+mode/i,
+  /developer\s+mode\s+now/i,
+  /reveal\s+(?:your\s+)?(?:system|internal|developer)\s+(?:instructions|prompt)/i,
+  /bypass\s+(?:safety|content|passwords)\s+(?:filters|guardrails)?/i,
+  /print\s+(?:the\s+)?(?:hidden|initial|original)\s+instructions/i,
+  /act\s+as\s+(?:an?\s+)?(?:evil|malicious|unrestricted)\s+ai/i,
+  /forget\s+(?:everything|your\s+identity|all\s+rules)/i,
+  /simulate\s+(?:a\s+)?jailbreak/i,
+  /give\s+me\s+(?:credentials|passwords|admin\s+access)/i
 ];
 
 const EXPERT_KNOWLEDGE_BASE = [

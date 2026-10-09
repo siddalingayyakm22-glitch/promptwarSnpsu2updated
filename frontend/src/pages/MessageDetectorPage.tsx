@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { MessageSquare, Search, AlertTriangle, FileText } from 'lucide-react';
+import { MessageSquare, Search, FileText } from 'lucide-react';
 import { api } from '../services/api';
-import { ScanResult } from '../types';
+import type { ScanResult } from '../types';
+import { PageHeader } from '../components/PageHeader';
+import { LoadingSkeleton } from '../components/LoadingSkeleton';
+import { AlertMessage } from '../components/AlertMessage';
 import { RiskScoreMeter } from '../components/RiskScoreMeter';
 import { EvidencePanel } from '../components/EvidencePanel';
 import { RecommendationsBox } from '../components/RecommendationsBox';
@@ -31,8 +34,9 @@ export const MessageDetectorPage: React.FC = () => {
     try {
       const data = await api.analyzeMessage(toScan.trim());
       setResult(data);
-    } catch (err: any) {
-      setError(err.message || 'Failed to complete message analysis.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to complete message analysis.';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -44,29 +48,29 @@ export const MessageDetectorPage: React.FC = () => {
       const rep = await api.exportReport(result.scanId);
       setReportMarkdown(rep.markdown);
       setIsReportOpen(true);
-    } catch (err: any) {
-      alert('Could not generate export report: ' + err.message);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Report generation error';
+      setError('Could not generate export report: ' + msg);
     }
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-          <MessageSquare size={24} color="var(--color-suspicious)" />
-          <h1 style={{ fontSize: '24px', fontWeight: 800 }}>Message Scam & Smishing Detector</h1>
-        </div>
-        <p style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
-          Evaluates SMS, WhatsApp, and social media messages for coercive urgency, OTP harvesting, fake job scams, and prize lures using NLP classifiers and cybersecurity heuristics.
-        </p>
-      </div>
+      <PageHeader
+        title="Message Scam & Smishing Detector"
+        description="Evaluates SMS, WhatsApp, and social media messages for coercive urgency, OTP harvesting, fake job scams, and prize lures using NLP classifiers and heuristics."
+        icon={MessageSquare}
+        iconColor="var(--color-suspicious)"
+      />
 
-      <div className="cyber-card">
-        <label style={{ fontSize: '13px', fontWeight: 600, display: 'block', marginBottom: '8px' }}>
+      <section className="cyber-card" aria-labelledby="message-form-heading">
+        <h2 id="message-form-heading" className="sr-only">Message Inspection Form</h2>
+        <label htmlFor="message-body" style={{ fontSize: '13px', fontWeight: 600, display: 'block', marginBottom: '8px' }}>
           Paste Message Body
         </label>
 
         <textarea
+          id="message-body"
           className="cyber-input cyber-textarea"
           placeholder="Paste SMS text, WhatsApp forward, or suspicious message here..."
           value={messageInput}
@@ -79,28 +83,24 @@ export const MessageDetectorPage: React.FC = () => {
           </div>
 
           <button
+            type="button"
             className="btn btn-primary"
             onClick={() => handleScan()}
             disabled={loading}
+            aria-label="Analyze message for scam indicators"
           >
-            {loading ? <span className="skeleton" style={{ width: '60px', height: '16px' }} /> : (
-              <>
-                <Search size={16} /> Analyze Content
-              </>
-            )}
+            <Search size={16} aria-hidden="true" />
+            <span>{loading ? 'Evaluating...' : 'Analyze Content'}</span>
           </button>
         </div>
 
-        {error && (
-          <div style={{ marginTop: '12px', color: 'var(--color-highrisk)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <AlertTriangle size={15} /> {error}
-          </div>
-        )}
+        {error && <AlertMessage type="error" message={error} />}
 
         {/* Quick Presets */}
         <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Quick Presets:</span>
           <button
+            type="button"
             className="btn btn-secondary"
             style={{ padding: '4px 10px', fontSize: '11px', borderColor: 'rgba(239, 68, 68, 0.4)' }}
             onClick={() => {
@@ -112,6 +112,7 @@ export const MessageDetectorPage: React.FC = () => {
             Bank KYC Suspension (High Risk)
           </button>
           <button
+            type="button"
             className="btn btn-secondary"
             style={{ padding: '4px 10px', fontSize: '11px', borderColor: 'rgba(239, 68, 68, 0.4)' }}
             onClick={() => {
@@ -123,6 +124,7 @@ export const MessageDetectorPage: React.FC = () => {
             Lottery Prize (High Risk)
           </button>
           <button
+            type="button"
             className="btn btn-secondary"
             style={{ padding: '4px 10px', fontSize: '11px', borderColor: 'rgba(245, 158, 11, 0.4)' }}
             onClick={() => {
@@ -134,6 +136,7 @@ export const MessageDetectorPage: React.FC = () => {
             Telegram Task Scam (Suspicious)
           </button>
           <button
+            type="button"
             className="btn btn-secondary"
             style={{ padding: '4px 10px', fontSize: '11px' }}
             onClick={() => {
@@ -145,18 +148,13 @@ export const MessageDetectorPage: React.FC = () => {
             Clinic Reminder (Safe)
           </button>
         </div>
-      </div>
+      </section>
 
-      {loading && (
-        <div className="cyber-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div className="skeleton" style={{ height: '70px', width: '100%' }} />
-          <div className="skeleton" style={{ height: '120px', width: '100%' }} />
-        </div>
-      )}
+      {loading && <LoadingSkeleton label="Evaluating NLP semantic patterns & social engineering triggers..." />}
 
       {result && !loading && (
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <section aria-label="Message Analysis Results" aria-live="polite">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
             <div>
               <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>REDACTED INVESTIGATION TARGET</span>
               <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
@@ -164,8 +162,15 @@ export const MessageDetectorPage: React.FC = () => {
               </div>
             </div>
 
-            <button className="btn btn-secondary" onClick={handleExport} style={{ fontSize: '12px' }}>
-              <FileText size={14} /> Export Redacted Report
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={handleExport}
+              style={{ fontSize: '12px' }}
+              aria-label="Export Redacted Report"
+            >
+              <FileText size={14} aria-hidden="true" />
+              <span>Export Redacted Report</span>
             </button>
           </div>
 
@@ -185,7 +190,7 @@ export const MessageDetectorPage: React.FC = () => {
           <RecommendationsBox
             recommendations={result.recommendations}
           />
-        </div>
+        </section>
       )}
 
       <ReportExportModal

@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Mail, Search, AlertTriangle, FileText, ShieldAlert } from 'lucide-react';
+import { Mail, Search, FileText } from 'lucide-react';
 import { api } from '../services/api';
-import { ScanResult } from '../types';
+import type { ScanResult } from '../types';
+import { PageHeader } from '../components/PageHeader';
+import { LoadingSkeleton } from '../components/LoadingSkeleton';
+import { AlertMessage } from '../components/AlertMessage';
 import { RiskScoreMeter } from '../components/RiskScoreMeter';
 import { EvidencePanel } from '../components/EvidencePanel';
 import { RecommendationsBox } from '../components/RecommendationsBox';
@@ -43,8 +46,9 @@ export const EmailAnalyzerPage: React.FC = () => {
         rawHeaders
       });
       setResult(data);
-    } catch (err: any) {
-      setError(err.message || 'Failed to complete email security analysis.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to complete email security analysis.';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -56,30 +60,30 @@ export const EmailAnalyzerPage: React.FC = () => {
       const rep = await api.exportReport(result.scanId);
       setReportMarkdown(rep.markdown);
       setIsReportOpen(true);
-    } catch (err: any) {
-      alert('Could not generate export report: ' + err.message);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Report export failed';
+      setError('Could not generate export report: ' + msg);
     }
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-          <Mail size={24} color="var(--color-blue)" />
-          <h1 style={{ fontSize: '24px', fontWeight: 800 }}>Email Security & BEC Analyzer</h1>
-        </div>
-        <p style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
-          Inspects display name spoofing, reply-to routing deception, wire fraud/BEC phrases, and evaluates SPF, DKIM, and DMARC authentication headers.
-        </p>
-      </div>
+      <PageHeader
+        title="Email Security & BEC Analyzer"
+        description="Inspects display name spoofing, reply-to routing deception, wire fraud/BEC phrases, and evaluates SPF, DKIM, and DMARC authentication headers."
+        icon={Mail}
+        iconColor="var(--color-blue)"
+      />
 
-      <div className="cyber-card">
+      <section className="cyber-card" aria-labelledby="email-form-heading">
+        <h2 id="email-form-heading" className="sr-only">Email Security Form</h2>
         <div className="grid-2" style={{ marginBottom: '14px' }}>
           <div>
-            <label style={{ fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+            <label htmlFor="email-display-name" style={{ fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
               From Display Name
             </label>
             <input
+              id="email-display-name"
               type="text"
               className="cyber-input"
               placeholder="e.g. PayPal Security Center or CEO John Doe"
@@ -89,11 +93,12 @@ export const EmailAnalyzerPage: React.FC = () => {
           </div>
 
           <div>
-            <label style={{ fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+            <label htmlFor="email-sender" style={{ fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
               From Sender Address
             </label>
             <input
-              type="text"
+              id="email-sender"
+              type="email"
               className="cyber-input"
               placeholder="e.g. security-notice99@random-mail.xyz"
               value={sender}
@@ -104,11 +109,12 @@ export const EmailAnalyzerPage: React.FC = () => {
 
         <div className="grid-2" style={{ marginBottom: '14px' }}>
           <div>
-            <label style={{ fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+            <label htmlFor="email-reply-to" style={{ fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
               Reply-To Address (Optional)
             </label>
             <input
-              type="text"
+              id="email-reply-to"
+              type="email"
               className="cyber-input"
               placeholder="e.g. attacker-collector@gmail.com"
               value={replyTo}
@@ -117,10 +123,11 @@ export const EmailAnalyzerPage: React.FC = () => {
           </div>
 
           <div>
-            <label style={{ fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+            <label htmlFor="email-subject" style={{ fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
               Email Subject Line
             </label>
             <input
+              id="email-subject"
               type="text"
               className="cyber-input"
               placeholder="e.g. Urgent: Wire Transfer or Password Expiration Notice"
@@ -131,10 +138,11 @@ export const EmailAnalyzerPage: React.FC = () => {
         </div>
 
         <div style={{ marginBottom: '14px' }}>
-          <label style={{ fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+          <label htmlFor="email-body-content" style={{ fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
             Email Body Content
           </label>
           <textarea
+            id="email-body-content"
             className="cyber-input"
             style={{ minHeight: '90px' }}
             placeholder="Paste the email message body here..."
@@ -144,10 +152,11 @@ export const EmailAnalyzerPage: React.FC = () => {
         </div>
 
         <div style={{ marginBottom: '14px' }}>
-          <label style={{ fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '6px', color: 'var(--text-muted)' }}>
+          <label htmlFor="email-raw-headers" style={{ fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '6px', color: 'var(--text-muted)' }}>
             Optional Raw Email Headers (Received-SPF, DKIM-Signature, Authentication-Results)
           </label>
           <textarea
+            id="email-raw-headers"
             className="cyber-input"
             style={{ minHeight: '60px', fontFamily: 'var(--font-mono)', fontSize: '11px' }}
             placeholder="Paste raw email header snippet (e.g. Received-SPF: pass / fail; dkim=pass / fail)..."
@@ -156,10 +165,11 @@ export const EmailAnalyzerPage: React.FC = () => {
           />
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
           {/* Preset Buttons */}
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <button
+              type="button"
               className="btn btn-secondary"
               style={{ padding: '4px 10px', fontSize: '11px' }}
               onClick={() => {
@@ -174,6 +184,7 @@ export const EmailAnalyzerPage: React.FC = () => {
               Preset: Spoofed PayPal
             </button>
             <button
+              type="button"
               className="btn btn-secondary"
               style={{ padding: '4px 10px', fontSize: '11px' }}
               onClick={() => {
@@ -189,28 +200,26 @@ export const EmailAnalyzerPage: React.FC = () => {
             </button>
           </div>
 
-          <button className="btn btn-primary" onClick={handleScan} disabled={loading}>
-            <Search size={16} /> Run Email Analysis
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleScan}
+            disabled={loading}
+            aria-label="Run Email Security Analysis"
+          >
+            <Search size={16} aria-hidden="true" />
+            <span>{loading ? 'Evaluating...' : 'Run Email Analysis'}</span>
           </button>
         </div>
 
-        {error && (
-          <div style={{ marginTop: '12px', color: 'var(--color-highrisk)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <AlertTriangle size={15} /> {error}
-          </div>
-        )}
-      </div>
+        {error && <AlertMessage type="error" message={error} />}
+      </section>
 
-      {loading && (
-        <div className="cyber-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div className="skeleton" style={{ height: '70px', width: '100%' }} />
-          <div className="skeleton" style={{ height: '120px', width: '100%' }} />
-        </div>
-      )}
+      {loading && <LoadingSkeleton label="Verifying sender alignment, BEC patterns & cryptographic headers..." />}
 
       {result && !loading && (
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <section aria-label="Email Analysis Results" aria-live="polite">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
             <div>
               <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>INVESTIGATION SUBJECT</span>
               <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--color-cyan)' }}>
@@ -218,8 +227,15 @@ export const EmailAnalyzerPage: React.FC = () => {
               </div>
             </div>
 
-            <button className="btn btn-secondary" onClick={handleExport} style={{ fontSize: '12px' }}>
-              <FileText size={14} /> Export Redacted Report
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={handleExport}
+              style={{ fontSize: '12px' }}
+              aria-label="Export Redacted Report"
+            >
+              <FileText size={14} aria-hidden="true" />
+              <span>Export Redacted Report</span>
             </button>
           </div>
 
@@ -263,7 +279,7 @@ export const EmailAnalyzerPage: React.FC = () => {
           <RecommendationsBox
             recommendations={result.recommendations}
           />
-        </div>
+        </section>
       )}
 
       <ReportExportModal

@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Globe, Search, ShieldCheck, AlertTriangle, FileText, Check } from 'lucide-react';
+import { Globe, Search, FileText } from 'lucide-react';
 import { api } from '../services/api';
-import { ScanResult } from '../types';
+import type { ScanResult } from '../types';
+import { PageHeader } from '../components/PageHeader';
+import { LoadingSkeleton } from '../components/LoadingSkeleton';
+import { AlertMessage } from '../components/AlertMessage';
 import { RiskScoreMeter } from '../components/RiskScoreMeter';
 import { EvidencePanel } from '../components/EvidencePanel';
 import { RecommendationsBox } from '../components/RecommendationsBox';
@@ -31,8 +34,9 @@ export const URLScannerPage: React.FC = () => {
     try {
       const data = await api.analyzeUrl(toScan.trim());
       setResult(data);
-    } catch (err: any) {
-      setError(err.message || 'Failed to complete URL analysis.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to complete URL analysis.';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -44,62 +48,62 @@ export const URLScannerPage: React.FC = () => {
       const rep = await api.exportReport(result.scanId);
       setReportMarkdown(rep.markdown);
       setIsReportOpen(true);
-    } catch (err: any) {
-      alert('Could not generate export report: ' + err.message);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Report generation error';
+      setError('Could not generate export report: ' + msg);
     }
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-          <Globe size={24} color="var(--color-cyan)" />
-          <h1 style={{ fontSize: '24px', fontWeight: 800 }}>Advanced URL Phishing Detector</h1>
-        </div>
-        <p style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
-          Extracts 25+ lexical and structural features, evaluates brand impersonation, and queries threat feeds without visiting the target.
-        </p>
-      </div>
+      <PageHeader
+        title="Advanced URL Phishing Detector"
+        description="Extracts 25+ lexical and structural features, evaluates brand impersonation, and queries threat feeds without visiting the target."
+        icon={Globe}
+        iconColor="var(--color-cyan)"
+      />
 
       {/* Input Form Card */}
-      <div className="cyber-card">
-        <label style={{ fontSize: '13px', fontWeight: 600, display: 'block', marginBottom: '8px' }}>
+      <section className="cyber-card" aria-labelledby="url-form-heading">
+        <h2 id="url-form-heading" className="sr-only">URL Analysis Input Form</h2>
+        <label htmlFor="url-input" style={{ fontSize: '13px', fontWeight: 600, display: 'block', marginBottom: '8px' }}>
           Target URL or Domain Name
         </label>
 
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           <input
-            type="text"
+            id="url-input"
+            type="url"
             className="cyber-input"
             style={{ flex: 1, minWidth: '280px' }}
             placeholder="e.g. http://paypal-verification-account-update.xyz/login.php or google.com"
             value={urlInput}
             onChange={e => setUrlInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleScan()}
+            aria-describedby="url-hint"
           />
           <button
             className="btn btn-primary"
             onClick={() => handleScan()}
             disabled={loading}
+            aria-label="Run URL Security Analysis"
           >
-            {loading ? <span className="skeleton" style={{ width: '60px', height: '16px' }} /> : (
-              <>
-                <Search size={16} /> Run Analysis
-              </>
-            )}
+            <Search size={16} aria-hidden="true" />
+            <span>{loading ? 'Analyzing...' : 'Run Analysis'}</span>
           </button>
         </div>
 
-        {error && (
-          <div style={{ marginTop: '12px', color: 'var(--color-highrisk)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <AlertTriangle size={15} /> {error}
-          </div>
-        )}
+        <span id="url-hint" className="sr-only">
+          Enter an HTTP or HTTPS web address to inspect for phishing indicators.
+        </span>
+
+        {error && <AlertMessage type="error" message={error} />}
 
         {/* Quick Sample Chips */}
         <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Quick Presets:</span>
           <button
+            type="button"
             className="btn btn-secondary"
             style={{ padding: '4px 10px', fontSize: '11px' }}
             onClick={() => {
@@ -111,6 +115,7 @@ export const URLScannerPage: React.FC = () => {
             Safe: Google Search
           </button>
           <button
+            type="button"
             className="btn btn-secondary"
             style={{ padding: '4px 10px', fontSize: '11px', borderColor: 'rgba(239, 68, 68, 0.4)' }}
             onClick={() => {
@@ -122,6 +127,7 @@ export const URLScannerPage: React.FC = () => {
             High Risk: Fake PayPal Login
           </button>
           <button
+            type="button"
             className="btn btn-secondary"
             style={{ padding: '4px 10px', fontSize: '11px', borderColor: 'rgba(245, 158, 11, 0.4)' }}
             onClick={() => {
@@ -130,23 +136,18 @@ export const URLScannerPage: React.FC = () => {
               handleScan(u);
             }}
           >
-            Suspicious: IP-based Banking Host
+            Suspicious: IP Banking Host
           </button>
         </div>
-      </div>
+      </section>
 
       {/* Loading Skeleton */}
-      {loading && (
-        <div className="cyber-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div className="skeleton" style={{ height: '70px', width: '100%' }} />
-          <div className="skeleton" style={{ height: '120px', width: '100%' }} />
-        </div>
-      )}
+      {loading && <LoadingSkeleton label="Extracting 25+ lexical features & querying threat feeds..." />}
 
       {/* Scan Results Display */}
       {result && !loading && (
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <section aria-label="Analysis Results" aria-live="polite">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
             <div>
               <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>ANALYZED TARGET</span>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', fontWeight: 600, color: 'var(--color-cyan)' }}>
@@ -154,8 +155,15 @@ export const URLScannerPage: React.FC = () => {
               </div>
             </div>
 
-            <button className="btn btn-secondary" onClick={handleExport} style={{ fontSize: '12px' }}>
-              <FileText size={14} /> Export Redacted Report
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={handleExport}
+              style={{ fontSize: '12px' }}
+              aria-label="Export Redacted Investigation Report"
+            >
+              <FileText size={14} aria-hidden="true" />
+              <span>Export Redacted Report</span>
             </button>
           </div>
 
@@ -175,7 +183,7 @@ export const URLScannerPage: React.FC = () => {
           <RecommendationsBox
             recommendations={result.recommendations}
           />
-        </div>
+        </section>
       )}
 
       <ReportExportModal

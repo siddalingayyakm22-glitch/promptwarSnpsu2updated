@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { LifeBuoy, PhoneCall, ShieldAlert, CheckSquare, Square, ExternalLink, ArrowRight } from 'lucide-react';
+import { LifeBuoy, PhoneCall, CheckSquare, Square, ExternalLink } from 'lucide-react';
+import { PageHeader } from '../components/PageHeader';
 
 const SCENARIOS = [
   {
@@ -77,19 +78,17 @@ export const IncidentResponsePage: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-          <LifeBuoy size={24} color="var(--color-highrisk)" />
-          <h1 style={{ fontSize: '24px', fontWeight: 800 }}>Incident Response Assistant</h1>
-        </div>
-        <p style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
-          Step-by-step emergency mitigation workflows for suspected scams, account takeovers, and fraudulent transactions.
-        </p>
-      </div>
+      <PageHeader
+        title="Incident Response Assistant"
+        description="Step-by-step emergency mitigation workflows for suspected scams, account takeovers, and fraudulent transactions."
+        icon={LifeBuoy}
+        iconColor="var(--color-highrisk)"
+      />
 
       {/* Official India Helpline Banner */}
-      <div
+      <section
         className="cyber-card"
+        aria-label="National Cybercrime Emergency Helpline"
         style={{
           background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(245, 158, 11, 0.1) 100%)',
           borderColor: 'rgba(239, 68, 68, 0.3)'
@@ -98,8 +97,8 @@ export const IncidentResponsePage: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <PhoneCall size={20} color="var(--color-highrisk)" />
-              <h3 style={{ fontSize: '18px', fontWeight: 800 }}>India National Cybercrime Helpline: 1930</h3>
+              <PhoneCall size={20} color="var(--color-highrisk)" aria-hidden="true" />
+              <h2 style={{ fontSize: '18px', fontWeight: 800 }}>India National Cybercrime Helpline: 1930</h2>
             </div>
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
               Call <strong>1930</strong> immediately to freeze defrauded funds during the golden hour (Indian Ministry of Home Affairs).
@@ -113,35 +112,39 @@ export const IncidentResponsePage: React.FC = () => {
             className="btn btn-secondary"
             style={{ fontSize: '13px', color: 'var(--color-cyan)', borderColor: 'var(--color-cyan)' }}
           >
-            cybercrime.gov.in <ExternalLink size={14} />
+            <span>cybercrime.gov.in</span>
+            <ExternalLink size={14} aria-hidden="true" />
           </a>
         </div>
-      </div>
+      </section>
 
       {/* Incident Selection Chips */}
-      <div>
-        <label style={{ fontSize: '13px', fontWeight: 700, display: 'block', marginBottom: '8px' }}>
+      <section aria-label="Incident Type Selection">
+        <label id="scenario-selector-label" style={{ fontSize: '13px', fontWeight: 700, display: 'block', marginBottom: '8px' }}>
           Select What Happened:
         </label>
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <div role="radiogroup" aria-labelledby="scenario-selector-label" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           {SCENARIOS.map(sc => (
             <button
               key={sc.id}
+              type="button"
               className={`btn ${activeScenarioId === sc.id ? 'btn-primary' : 'btn-secondary'}`}
               style={{ fontSize: '13px' }}
               onClick={() => setActiveScenarioId(sc.id)}
+              role="radio"
+              aria-checked={activeScenarioId === sc.id}
             >
               {sc.title}
             </button>
           ))}
         </div>
-      </div>
+      </section>
 
       {/* Interactive Containment Checklist */}
-      <div className="cyber-card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+      <section className="cyber-card" aria-labelledby="checklist-heading">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
           <div>
-            <h3 style={{ fontSize: '18px', fontWeight: 800 }}>{activeScenario.title}</h3>
+            <h2 id="checklist-heading" style={{ fontSize: '18px', fontWeight: 800 }}>{activeScenario.title}</h2>
             <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
               Follow these prioritized containment actions in order:
             </span>
@@ -152,13 +155,22 @@ export const IncidentResponsePage: React.FC = () => {
           </span>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }} role="list">
           {activeScenario.steps.map((step, idx) => {
             const isChecked = !!checkedSteps[`${activeScenarioId}_${idx}`];
             return (
               <div
                 key={idx}
                 onClick={() => toggleCheck(idx)}
+                onKeyDown={e => {
+                  if (e.key === ' ' || e.key === 'Enter') {
+                    e.preventDefault();
+                    toggleCheck(idx);
+                  }
+                }}
+                tabIndex={0}
+                role="checkbox"
+                aria-checked={isChecked}
                 style={{
                   display: 'flex',
                   alignItems: 'flex-start',
@@ -171,7 +183,7 @@ export const IncidentResponsePage: React.FC = () => {
                   transition: 'background 0.2s'
                 }}
               >
-                <div style={{ marginTop: '2px', color: isChecked ? 'var(--color-safe)' : 'var(--text-muted)' }}>
+                <div style={{ marginTop: '2px', color: isChecked ? 'var(--color-safe)' : 'var(--text-muted)' }} aria-hidden="true">
                   {isChecked ? <CheckSquare size={18} /> : <Square size={18} />}
                 </div>
 
@@ -189,7 +201,7 @@ export const IncidentResponsePage: React.FC = () => {
             );
           })}
         </div>
-      </div>
+      </section>
     </div>
   );
 };

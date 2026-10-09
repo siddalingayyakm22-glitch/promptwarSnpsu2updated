@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Bot, Send, ShieldCheck, AlertCircle, Sparkles, User, ShieldAlert } from 'lucide-react';
+import { Bot, Send, Sparkles, User } from 'lucide-react';
 import { api } from '../services/api';
+import { PageHeader } from '../components/PageHeader';
+import { AlertMessage } from '../components/AlertMessage';
 
 interface ChatMessage {
   id: string;
@@ -35,6 +37,7 @@ export const SecurityCopilotPage: React.FC = () => {
     }
   ]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSend = async (queryText?: string) => {
     const textToSend = queryText || input;
@@ -50,6 +53,7 @@ export const SecurityCopilotPage: React.FC = () => {
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setLoading(true);
+    setError(null);
 
     try {
       const res = await api.chat(textToSend);
@@ -61,15 +65,17 @@ export const SecurityCopilotPage: React.FC = () => {
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setMessages(prev => [...prev, assistantMsg]);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Service unavailable';
       const errorMsg: ChatMessage = {
         id: 'err_' + Date.now(),
         sender: 'assistant',
-        text: `⚠️ Error contacting Copilot engine: ${err.message || 'Service unavailable'}. Please verify backend status.`,
+        text: `⚠️ Error contacting Copilot engine: ${msg}. Please verify backend status.`,
         source: 'ERROR',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setMessages(prev => [...prev, errorMsg]);
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -77,19 +83,20 @@ export const SecurityCopilotPage: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 140px)', gap: '16px' }}>
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-          <Bot size={24} color="var(--color-cyan)" />
-          <h1 style={{ fontSize: '24px', fontWeight: 800 }}>AI Security Copilot</h1>
-        </div>
-        <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-          Conversational digital safety advisor. Built with strict prompt-injection defenses and zero credential collection.
-        </p>
-      </div>
+      <PageHeader
+        title="AI Security Copilot"
+        description="Conversational digital safety advisor. Built with strict prompt-injection defenses and zero credential collection."
+        icon={Bot}
+        iconColor="var(--color-cyan)"
+      />
+
+      {error && <AlertMessage type="warning" message={`Notice: ${error}`} />}
 
       {/* Chat Messages Container */}
-      <div
+      <section
         className="cyber-card"
+        aria-label="Conversation Log"
+        aria-live="polite"
         style={{
           flex: 1,
           overflowY: 'auto',
@@ -125,6 +132,7 @@ export const SecurityCopilotPage: React.FC = () => {
                     justifyContent: 'center',
                     flexShrink: 0
                   }}
+                  aria-hidden="true"
                 >
                   <Bot size={18} color="var(--color-cyan)" />
                 </div>
@@ -157,7 +165,7 @@ export const SecurityCopilotPage: React.FC = () => {
                     justifyContent: isUser ? 'flex-end' : 'flex-start'
                   }}
                 >
-                  <span>{m.timestamp}</span>
+                  <time>{m.timestamp}</time>
                   {m.source && (
                     <span>• {m.source.replace('_', ' ')}</span>
                   )}
@@ -177,6 +185,7 @@ export const SecurityCopilotPage: React.FC = () => {
                     justifyContent: 'center',
                     flexShrink: 0
                   }}
+                  aria-hidden="true"
                 >
                   <User size={18} color="var(--text-secondary)" />
                 </div>
@@ -186,45 +195,56 @@ export const SecurityCopilotPage: React.FC = () => {
         })}
 
         {loading && (
-          <div style={{ display: 'flex', gap: '12px', alignSelf: 'flex-start' }}>
+          <div style={{ display: 'flex', gap: '12px', alignSelf: 'flex-start' }} aria-busy="true" aria-label="Copilot is generating guidance...">
             <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--bg-input)' }} />
             <div className="skeleton" style={{ width: '200px', height: '40px', borderRadius: 'var(--radius-md)' }} />
           </div>
         )}
-      </div>
+      </section>
 
       {/* Suggested Questions Pills */}
-      <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+      <nav aria-label="Suggested Security Questions" style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
         {SUGGESTED_QUERIES.map((q, idx) => (
           <button
             key={idx}
+            type="button"
             className="btn btn-secondary"
             style={{ padding: '6px 12px', fontSize: '11px', whiteSpace: 'nowrap' }}
             onClick={() => handleSend(q)}
           >
-            <Sparkles size={12} color="var(--color-cyan)" /> {q}
+            <Sparkles size={12} color="var(--color-cyan)" aria-hidden="true" />
+            <span>{q}</span>
           </button>
         ))}
-      </div>
+      </nav>
 
       {/* Input Form */}
-      <div style={{ display: 'flex', gap: '10px' }}>
+      <form
+        onSubmit={e => {
+          e.preventDefault();
+          handleSend();
+        }}
+        style={{ display: 'flex', gap: '10px' }}
+      >
+        <label htmlFor="copilot-input" className="sr-only">Ask Security Copilot a question</label>
         <input
+          id="copilot-input"
           type="text"
           className="cyber-input"
           placeholder="Ask Copilot a cybersecurity or incident question..."
           value={input}
           onChange={e => setInput(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleSend()}
         />
         <button
+          type="submit"
           className="btn btn-primary"
-          onClick={() => handleSend()}
           disabled={loading || !input.trim()}
+          aria-label="Send message to Copilot"
         >
-          <Send size={16} /> Send
+          <Send size={16} aria-hidden="true" />
+          <span>Send</span>
         </button>
-      </div>
+      </form>
     </div>
   );
 };

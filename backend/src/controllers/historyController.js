@@ -1,15 +1,16 @@
 const { ScanRepository } = require('../models/Scan');
+const { LIMITS } = require('../config/constants');
 
 async function getHistoryHandler(req, res, next) {
   try {
-    const { scanType, classification, threatType, page = 1, limit = 20 } = req.query;
+    const { scanType, classification, threatType, page = 1, limit = LIMITS.DEFAULT_PAGE_SIZE } = req.query;
     const query = {};
     if (scanType) query.scanType = scanType;
     if (classification) query.classification = classification;
     if (threatType) query.threatType = threatType;
 
-    const pageNum = parseInt(page, 10) || 1;
-    const limitNum = parseInt(limit, 10) || 20;
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(LIMITS.MAX_PAGE_SIZE, Math.max(1, parseInt(limit, 10) || LIMITS.DEFAULT_PAGE_SIZE));
     const skip = (pageNum - 1) * limitNum;
 
     const items = await ScanRepository.find(query, { skip, limit: limitNum });
@@ -38,7 +39,11 @@ async function getHistoryByIdHandler(req, res, next) {
     const { id } = req.params;
     const item = await ScanRepository.findById(id);
     if (!item) {
-      return res.status(404).json({ success: false, data: null, error: 'Scan record not found' });
+      return res.status(404).json({
+        success: false,
+        data: null,
+        error: { code: 'NOT_FOUND', message: 'Scan record not found' }
+      });
     }
     res.status(200).json({ success: true, data: item, error: null });
   } catch (err) {
@@ -51,7 +56,11 @@ async function deleteHistoryByIdHandler(req, res, next) {
     const { id } = req.params;
     const deleted = await ScanRepository.deleteById(id);
     if (!deleted) {
-      return res.status(404).json({ success: false, data: null, error: 'Scan record not found or already removed' });
+      return res.status(404).json({
+        success: false,
+        data: null,
+        error: { code: 'NOT_FOUND', message: 'Scan record not found or already removed' }
+      });
     }
     res.status(200).json({ success: true, data: { message: `Scan ${id} deleted successfully` }, error: null });
   } catch (err) {
@@ -81,7 +90,11 @@ async function exportReportHandler(req, res, next) {
     }
 
     if (!scan) {
-      return res.status(400).json({ success: false, data: null, error: 'No scan record available to generate report' });
+      return res.status(400).json({
+        success: false,
+        data: null,
+        error: { code: 'NO_DATA', message: 'No scan record available to generate report' }
+      });
     }
 
     const reportMarkdown = `# CYBERSHIELD AI - INCIDENT INVESTIGATION REPORT

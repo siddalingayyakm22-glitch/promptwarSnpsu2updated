@@ -21,11 +21,12 @@ import { NotFoundPage } from './pages/NotFoundPage';
 export const App: React.FC = () => {
   return (
     <BrowserRouter>
+      <a href="#main-content" className="skip-link">Skip to main content</a>
       <div className="app-container">
         <Sidebar />
         <div className="main-content">
           <Navbar />
-          <main className="page-wrapper">
+          <main id="main-content" className="page-wrapper" tabIndex={-1}>
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/scan-url" element={<URLScannerPage />} />

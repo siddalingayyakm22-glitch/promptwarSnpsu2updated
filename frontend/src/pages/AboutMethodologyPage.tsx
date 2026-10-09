@@ -1,18 +1,16 @@
 import React from 'react';
 import { FileCode2, Cpu, ShieldCheck, Layers, GitBranch, AlertTriangle } from 'lucide-react';
+import { PageHeader } from '../components/PageHeader';
 
 export const AboutMethodologyPage: React.FC = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-          <FileCode2 size={24} color="var(--color-cyan)" />
-          <h1 style={{ fontSize: '24px', fontWeight: 800 }}>Architecture & AI Methodology</h1>
-        </div>
-        <p style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
-          Transparent documentation of data pipelines, machine learning model specifications, feature extraction, and risk calibration algorithms.
-        </p>
-      </div>
+      <PageHeader
+        title="Architecture & AI Methodology"
+        description="Transparent documentation of data pipelines, machine learning model specifications, feature extraction, and risk calibration algorithms."
+        icon={FileCode2}
+        badgeText="Whitepaper & Specs"
+      />
 
       {/* End-to-End Pipeline Card */}
       <div className="cyber-card">

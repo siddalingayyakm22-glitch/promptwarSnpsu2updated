@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Shield, AlertTriangle, Activity, Database, RefreshCw } from 'lucide-react';
+import { LayoutDashboard, RefreshCw } from 'lucide-react';
 import { api } from '../services/api';
-import { DashboardData } from '../types';
+import type { DashboardData } from '../types';
+import { PageHeader } from '../components/PageHeader';
+import { LoadingSkeleton } from '../components/LoadingSkeleton';
+import { AlertMessage } from '../components/AlertMessage';
+import { EmptyState } from '../components/EmptyState';
 import { RiskBadge } from '../components/RiskBadge';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 
@@ -18,7 +22,7 @@ export const DashboardPage: React.FC = () => {
         setError(null);
       })
       .catch(err => {
-        setError(err.message || 'Failed to fetch dashboard metrics.');
+        setError(err instanceof Error ? err.message : 'Failed to fetch dashboard metrics.');
       })
       .finally(() => setLoading(false));
   };
@@ -37,40 +41,33 @@ export const DashboardPage: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-            <LayoutDashboard size={24} color="var(--color-cyan)" />
-            <h1 style={{ fontSize: '24px', fontWeight: 800 }}>Security Analytics Dashboard</h1>
-          </div>
-          <p style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
-            Real-time telemetry aggregated strictly from actual local database scan records.
-          </p>
-        </div>
+      <PageHeader
+        title="Security Analytics Dashboard"
+        description="Real-time telemetry aggregated strictly from actual local database scan records."
+        icon={LayoutDashboard}
+        iconColor="var(--color-cyan)"
+        action={
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={fetchDashboard}
+            disabled={loading}
+            aria-label="Refresh dashboard data"
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} aria-hidden="true" />
+            <span>Refresh</span>
+          </button>
+        }
+      />
 
-        <button className="btn btn-secondary" onClick={fetchDashboard} disabled={loading}>
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
-        </button>
-      </div>
+      {loading && <LoadingSkeleton label="Aggregating scan telemetry and system metrics..." lines={3} />}
 
-      {loading && (
-        <div className="grid-3">
-          <div className="cyber-card skeleton" style={{ height: '100px' }} />
-          <div className="cyber-card skeleton" style={{ height: '100px' }} />
-          <div className="cyber-card skeleton" style={{ height: '100px' }} />
-        </div>
-      )}
-
-      {error && (
-        <div className="cyber-card" style={{ borderColor: 'var(--color-highrisk)', color: 'var(--color-highrisk)' }}>
-          {error}
-        </div>
-      )}
+      {error && <AlertMessage type="error" message={error} />}
 
       {data && !loading && (
         <>
           {/* Key Metric Counters */}
-          <div className="grid-4">
+          <section className="grid-4" aria-label="Summary Statistics">
             <div className="cyber-card">
               <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700 }}>TOTAL SCANS</span>
               <div style={{ fontSize: '28px', fontWeight: 800, marginTop: '4px' }}>
@@ -102,22 +99,23 @@ export const DashboardPage: React.FC = () => {
               </div>
               <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Strong warning indicators</span>
             </div>
-          </div>
+          </section>
 
           {/* Charts Row */}
           <div className="grid-2">
             {/* Risk Band Distribution */}
-            <div className="cyber-card">
-              <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>
+            <section className="cyber-card" aria-label="Risk Band Distribution Chart">
+              <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>
                 Risk Band Distribution
-              </h3>
+              </h2>
 
               {data.summary.totalScans === 0 ? (
-                <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  No scans performed yet. Run a URL or Message scan to populate analytics.
-                </div>
+                <EmptyState
+                  title="No Scans Yet"
+                  description="Run a URL, message, or email scan to populate telemetry charts."
+                />
               ) : (
-                <div style={{ height: '220px', width: '100%' }}>
+                <div style={{ height: '220px', width: '100%' }} role="img" aria-label={`Risk Distribution: Safe ${data.summary.safeCount}, Suspicious ${data.summary.suspiciousCount}, High Risk ${data.summary.highRiskCount}`}>
                   <ResponsiveContainer>
                     <PieChart>
                       <Pie
@@ -129,7 +127,7 @@ export const DashboardPage: React.FC = () => {
                         paddingAngle={5}
                         dataKey="value"
                       >
-                        {pieData.map((entry, index) => (
+                        {pieData.map((_, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
@@ -143,20 +141,21 @@ export const DashboardPage: React.FC = () => {
                   </div>
                 </div>
               )}
-            </div>
+            </section>
 
             {/* Top Threat Categories */}
-            <div className="cyber-card">
-              <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>
+            <section className="cyber-card" aria-label="Top Threat Categories Chart">
+              <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>
                 Top Threat Categories
-              </h3>
+              </h2>
 
               {data.topThreats.length === 0 ? (
-                <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  No threats identified in current dataset.
-                </div>
+                <EmptyState
+                  title="No Threats Recorded"
+                  description="No threat signatures detected in the current dataset."
+                />
               ) : (
-                <div style={{ height: '220px', width: '100%' }}>
+                <div style={{ height: '220px', width: '100%' }} role="img" aria-label="Top detected threat categories distribution bar chart">
                   <ResponsiveContainer>
                     <BarChart data={data.topThreats}>
                       <XAxis dataKey="type" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} />
@@ -167,30 +166,32 @@ export const DashboardPage: React.FC = () => {
                   </ResponsiveContainer>
                 </div>
               )}
-            </div>
+            </section>
           </div>
 
           {/* Recent Investigations Table */}
-          <div className="cyber-card">
-            <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>
+          <section className="cyber-card" aria-labelledby="recent-scans-heading">
+            <h2 id="recent-scans-heading" style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>
               Recent Investigations
-            </h3>
+            </h2>
 
             {data.recentScans.length === 0 ? (
-              <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
-                No recent scan investigations on record.
-              </p>
+              <EmptyState
+                title="No Recent Investigations"
+                description="Investigations performed in the scanners will appear in this real-time log."
+              />
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                  <caption className="sr-only">List of recent security investigations</caption>
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--border-color)', textAlign: 'left', color: 'var(--text-muted)' }}>
-                      <th style={{ padding: '10px' }}>TYPE</th>
-                      <th style={{ padding: '10px' }}>TARGET (REDACTED)</th>
-                      <th style={{ padding: '10px' }}>SCORE</th>
-                      <th style={{ padding: '10px' }}>CLASSIFICATION</th>
-                      <th style={{ padding: '10px' }}>METHOD</th>
-                      <th style={{ padding: '10px' }}>DATE</th>
+                      <th scope="col" style={{ padding: '10px' }}>TYPE</th>
+                      <th scope="col" style={{ padding: '10px' }}>TARGET (REDACTED)</th>
+                      <th scope="col" style={{ padding: '10px' }}>SCORE</th>
+                      <th scope="col" style={{ padding: '10px' }}>CLASSIFICATION</th>
+                      <th scope="col" style={{ padding: '10px' }}>METHOD</th>
+                      <th scope="col" style={{ padding: '10px' }}>DATE</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -210,7 +211,7 @@ export const DashboardPage: React.FC = () => {
                 </table>
               </div>
             )}
-          </div>
+          </section>
         </>
       )}
     </div>

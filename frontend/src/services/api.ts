@@ -1,6 +1,21 @@
-import { ScanResult, DashboardData } from '../types';
+import type {
+  ScanResult,
+  DashboardData,
+  AnalyticsData,
+  ThreatFeedOverview,
+  EducationModule,
+  QuizQuestion,
+  QuizResult,
+  SystemHealthStatus
+} from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  error: { code?: string; message?: string } | string | null;
+}
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
@@ -14,13 +29,20 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     headers
   });
 
-  const json = await response.json().catch(() => ({ success: false, error: 'Invalid JSON response from server' }));
+  const json: ApiResponse<T> = await response.json().catch(() => ({
+    success: false,
+    data: null as unknown as T,
+    error: 'Invalid JSON response from server'
+  }));
 
   if (!response.ok || json.success === false) {
-    throw new Error(json.error || `Request failed with HTTP ${response.status}`);
+    const errorMsg = typeof json.error === 'object' && json.error !== null && 'message' in json.error
+      ? json.error.message || 'Server request failed'
+      : (typeof json.error === 'string' ? json.error : `Request failed with HTTP ${response.status}`);
+    throw new Error(errorMsg);
   }
 
-  return json.data as T;
+  return json.data;
 }
 
 export const api = {
@@ -66,8 +88,8 @@ export const api = {
 
   // Dashboard & Analytics
   getDashboard: () => request<DashboardData>('/dashboard'),
-  getAnalytics: () => request<any>('/analytics'),
-  getThreats: () => request<any>('/threats'),
+  getAnalytics: () => request<AnalyticsData>('/analytics'),
+  getThreats: () => request<ThreatFeedOverview>('/threats'),
 
   // History & Reports
   getHistory: (params: { page?: number; limit?: number; scanType?: string; classification?: string } = {}) => {
@@ -76,7 +98,7 @@ export const api = {
     if (params.limit) query.append('limit', params.limit.toString());
     if (params.scanType) query.append('scanType', params.scanType);
     if (params.classification) query.append('classification', params.classification);
-    return request<{ scans: ScanResult[]; pagination: any }>(`/history?${query.toString()}`);
+    return request<{ scans: ScanResult[]; pagination: { page: number; limit: number; total: number; pages: number } }>(`/history?${query.toString()}`);
   },
 
   getHistoryById: (id: string) => request<ScanResult>(`/history/${id}`),
@@ -88,13 +110,13 @@ export const api = {
   }),
 
   // Education
-  getEducation: () => request<{ modules: any[]; totalModules: number }>('/education'),
-  getQuiz: () => request<{ questions: any[] }>('/education/quiz'),
-  submitQuiz: (answers: Record<string, number>) => request<{ score: number; total: number; percentage: number; feedback: any[] }>('/education/quiz', {
+  getEducation: () => request<{ modules: EducationModule[]; totalModules: number }>('/education'),
+  getQuiz: () => request<{ questions: QuizQuestion[] }>('/education/quiz'),
+  submitQuiz: (answers: Record<string, number>) => request<QuizResult>('/education/quiz', {
     method: 'POST',
     body: JSON.stringify({ answers })
   }),
 
   // System Health
-  getHealth: () => request<any>('/health/ready')
+  getHealth: () => request<SystemHealthStatus>('/health/ready')
 };

@@ -1,6 +1,7 @@
 /**
  * SSRF (Server-Side Request Forgery) Defense Utility
- * Prevents DNS rebinding, internal loopback, AWS/cloud metadata access, and private subnet exploration.
+ * Prevents DNS rebinding, internal loopback, AWS/cloud metadata access,
+ * private subnet exploration, and alternative IP encodings (octal, hex, dword, IPv6 mapped).
  */
 
 const BLOCKED_HOSTNAMES = new Set([
@@ -9,7 +10,8 @@ const BLOCKED_HOSTNAMES = new Set([
   '0.0.0.0',
   '::1',
   'metadata.google.internal',
-  'instance-data'
+  'instance-data',
+  '169.254.169.254'
 ]);
 
 // Private IPv4 CIDR blocks and special ranges
@@ -20,35 +22,52 @@ const PRIVATE_IP_RANGES = [
   /^192\.168\./,                     // 192.168.0.0/16 (Private Network)
   /^169\.254\./,                     // 169.254.0.0/16 (Link Local / Cloud Metadata)
   /^0\./,                            // 0.0.0.0/8
-  /^100\.(6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7])\./, // CGNAT
+  /^100\.(6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7])\./, // Carrier-grade NAT
   /^198\.18\./,                      // Benchmark testing
 ];
 
 function isSafePublicTarget(hostname) {
-  if (!hostname) return { safe: false, reason: 'Missing hostname' };
+  if (!hostname || typeof hostname !== 'string') {
+    return { safe: false, reason: 'Missing or invalid hostname' };
+  }
 
   const lower = hostname.toLowerCase().trim();
 
-  // Blocked explicit hostnames
+  // 1. Direct match on blocked keywords
   if (BLOCKED_HOSTNAMES.has(lower)) {
-    return { safe: false, reason: 'Localhost or internal loopback target rejected' };
+    return { safe: false, reason: 'Internal loopback or cloud metadata target rejected' };
   }
 
-  // Cloud metadata endpoint check (AWS, GCP, Azure, DigitalOcean)
-  if (lower === '169.254.169.254' || lower.includes('metadata')) {
+  // 2. Cloud metadata keywords
+  if (lower.includes('metadata') || lower.includes('169.254.169.254')) {
     return { safe: false, reason: 'Cloud instance metadata endpoint rejected' };
   }
 
-  // Check IPv4 private subnets
+  // 3. Hexadecimal or Octal IP notation bypass checks (e.g., 0x7f.0.0.1, 0177.0.0.1, 2130706433)
+  if (/^0x[0-9a-f]+/i.test(lower) || /^0[0-7]+\./.test(lower) || /^\d{8,10}$/.test(lower)) {
+    return { safe: false, reason: 'Alternative encoded IP address notation rejected' };
+  }
+
+  // 4. IPv6 loopback / private checks
+  if (
+    lower === '::' ||
+    lower === '::1' ||
+    lower.startsWith('::ffff:127.') ||
+    lower.startsWith('::ffff:10.') ||
+    lower.startsWith('::ffff:192.168.') ||
+    lower.startsWith('::ffff:172.') ||
+    lower.startsWith('fe80:') ||
+    lower.startsWith('fc00:') ||
+    lower.startsWith('fd00:')
+  ) {
+    return { safe: false, reason: 'Private or loopback IPv6 address rejected' };
+  }
+
+  // 5. Check standard IPv4 private subnets
   for (const regex of PRIVATE_IP_RANGES) {
     if (regex.test(lower)) {
       return { safe: false, reason: 'Private or local RFC1918 IPv4 address rejected' };
     }
-  }
-
-  // Check IPv6 addresses (e.g. ::1, fe80::, fc00::)
-  if (lower.startsWith('fe80:') || lower.startsWith('fc00:') || lower.startsWith('fd00:') || lower === '::') {
-    return { safe: false, reason: 'Private or link-local IPv6 address rejected' };
   }
 
   return { safe: true, reason: 'Public target valid' };

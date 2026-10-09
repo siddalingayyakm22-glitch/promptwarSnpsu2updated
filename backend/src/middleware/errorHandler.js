@@ -1,14 +1,21 @@
-function errorHandler(err, req, res, next) {
-  console.error(`[Error] ${req.method} ${req.url}:`, err.message);
+/**
+ * Centralized Error Handling Middleware
+ * Provides safe, structured error responses without leaking internal stack traces.
+ */
 
-  const statusCode = err.status || err.statusCode || 500;
-  const isDev = process.env.NODE_ENV === 'development';
+function errorHandler(err, req, res, next) {
+  const statusCode = err.status || err.statusCode || (err.name === 'ZodError' ? 400 : 500);
+  const errorCode = err.code || (statusCode === 400 ? 'VALIDATION_ERROR' : (statusCode === 404 ? 'NOT_FOUND' : 'INTERNAL_SERVER_ERROR'));
+
+  const safeMessage = err.message || 'An unexpected error occurred while processing your request.';
 
   res.status(statusCode).json({
     success: false,
     data: null,
-    error: err.message || 'Internal server error occurred',
-    ...(isDev ? { stack: err.stack } : {})
+    error: {
+      code: errorCode,
+      message: safeMessage
+    }
   });
 }
 

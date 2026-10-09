@@ -76,3 +76,36 @@ def test_predictor_loaded_and_predicts():
     assert "probability" in scam_res
     if scam_res["available"]:
         assert scam_res["probability"] > 0.50
+
+def test_fastapi_endpoints():
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    client = TestClient(app)
+
+    # Health check
+    res = client.get("/api/health")
+    assert res.status_code == 200
+    assert res.json()["status"] == "ok"
+
+    # Model status
+    status_res = client.get("/api/models/status")
+    assert status_res.status_code == 200
+    assert status_res.json()["success"] is True
+
+    # URL prediction endpoint
+    url_res = client.post("/api/predict/url", json={"url": "http://paypal-verification-account-update.xyz/login.php"})
+    assert url_res.status_code == 200
+    data = url_res.json()
+    assert "probability" in data
+    assert "features" in data
+    assert data["features"]["is_suspicious_tld"] == 1
+
+    # Message prediction endpoint
+    msg_res = client.post("/api/predict/message", json={"message": "Urgent! Account suspended. Send OTP now!"})
+    assert msg_res.status_code == 200
+    msg_data = msg_res.json()
+    assert "probability" in msg_data
+    assert msg_data["entities"]["has_otp_request"] is True
+
+

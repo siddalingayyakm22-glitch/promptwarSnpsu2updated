@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const { z } = require('zod');
+const { LIMITS } = require('../config/constants');
 const { analyzeURL } = require('../services/urlAnalysisService');
 const { analyzeMessage } = require('../services/messageAnalysisService');
 const { analyzeEmail } = require('../services/emailAnalysisService');
@@ -8,45 +9,59 @@ const { analyzeAttachment } = require('../services/attachmentAnalysisService');
 const { handleChatQuery } = require('../services/copilotService');
 const { ScanRepository } = require('../models/Scan');
 
-// Validation schemas
+// Validation schemas with centralized limits
 const urlSchema = z.object({
-  url: z.string().min(1, 'URL is required').max(2048, 'URL exceeds maximum length')
+  url: z.string().trim().min(1, 'URL cannot be empty').max(LIMITS.MAX_URL_LENGTH, 'URL exceeds maximum length')
 });
 
 const messageSchema = z.object({
-  message: z.string().min(1, 'Message is required').max(10000, 'Message exceeds maximum length')
+  message: z.string().trim().min(1, 'Message content cannot be empty').max(LIMITS.MAX_MESSAGE_LENGTH, 'Message exceeds maximum length')
 });
 
 const emailSchema = z.object({
-  sender: z.string().optional().default(''),
-  displayName: z.string().optional().default(''),
-  replyTo: z.string().optional().default(''),
-  subject: z.string().optional().default(''),
-  body: z.string().optional().default(''),
-  links: z.array(z.string()).optional().default([]),
-  rawHeaders: z.string().optional().default('')
+  sender: z.string().trim().max(320).optional().default(''),
+  displayName: z.string().trim().max(255).optional().default(''),
+  replyTo: z.string().trim().max(320).optional().default(''),
+  subject: z.string().trim().max(500).optional().default(''),
+  body: z.string().max(LIMITS.MAX_EMAIL_BODY_LENGTH).optional().default(''),
+  links: z.array(z.string().max(LIMITS.MAX_URL_LENGTH)).optional().default([]),
+  rawHeaders: z.string().max(10000).optional().default('')
+}).refine(data => data.sender || data.subject || data.body, {
+  message: 'At least sender, subject, or email body must be provided'
 });
 
 const qrSchema = z.object({
-  rawText: z.string().optional(),
-  base64Image: z.string().optional()
+  rawText: z.string().trim().max(LIMITS.MAX_URL_LENGTH).optional(),
+  base64Image: z.string().max(LIMITS.MAX_QR_IMAGE_BYTES * 2).optional()
 }).refine(data => data.rawText || data.base64Image, {
   message: 'Either rawText or base64Image must be supplied'
 });
 
 const attachmentSchema = z.object({
-  filename: z.string().min(1, 'Filename is required').max(255),
-  mimeType: z.string().optional().default(''),
-  fileSize: z.number().optional().default(0),
-  fileHash: z.string().optional().nullable()
+  filename: z.string().trim().min(1, 'Filename is required').max(LIMITS.MAX_ATTACHMENT_FILENAME_LENGTH),
+  mimeType: z.string().trim().max(100).optional().default(''),
+  fileSize: z.number().nonnegative().max(LIMITS.MAX_ATTACHMENT_SIZE_BYTES).optional().default(0),
+  fileHash: z.string().trim().max(128).optional().nullable()
 });
 
 const chatSchema = z.object({
-  message: z.string().min(1, 'Chat prompt is required').max(4000)
+  message: z.string().trim().min(1, 'Chat prompt cannot be empty').max(LIMITS.MAX_CHAT_PROMPT_LENGTH, 'Prompt exceeds maximum length')
 });
 
 function sha256(text) {
   return crypto.createHash('sha256').update(text).digest('hex');
+}
+
+function handleValidationError(err, res) {
+  const firstError = err.errors && err.errors[0] ? err.errors[0].message : 'Validation failed';
+  return res.status(400).json({
+    success: false,
+    data: null,
+    error: {
+      code: 'VALIDATION_ERROR',
+      message: firstError
+    }
+  });
 }
 
 async function analyzeURLHandler(req, res, next) {
@@ -82,7 +97,7 @@ async function analyzeURLHandler(req, res, next) {
     });
   } catch (err) {
     if (err instanceof z.ZodError) {
-      return res.status(400).json({ success: false, data: null, error: err.errors[0].message });
+      return handleValidationError(err, res);
     }
     next(err);
   }
@@ -120,7 +135,7 @@ async function analyzeMessageHandler(req, res, next) {
     });
   } catch (err) {
     if (err instanceof z.ZodError) {
-      return res.status(400).json({ success: false, data: null, error: err.errors[0].message });
+      return handleValidationError(err, res);
     }
     next(err);
   }
@@ -159,7 +174,7 @@ async function analyzeEmailHandler(req, res, next) {
     });
   } catch (err) {
     if (err instanceof z.ZodError) {
-      return res.status(400).json({ success: false, data: null, error: err.errors[0].message });
+      return handleValidationError(err, res);
     }
     next(err);
   }
@@ -197,9 +212,13 @@ async function analyzeQRHandler(req, res, next) {
     });
   } catch (err) {
     if (err instanceof z.ZodError) {
-      return res.status(400).json({ success: false, data: null, error: err.errors[0].message });
+      return handleValidationError(err, res);
     }
-    res.status(400).json({ success: false, data: null, error: err.message });
+    res.status(400).json({
+      success: false,
+      data: null,
+      error: { code: 'QR_DECODING_ERROR', message: err.message }
+    });
   }
 }
 
@@ -235,7 +254,7 @@ async function analyzeAttachmentHandler(req, res, next) {
     });
   } catch (err) {
     if (err instanceof z.ZodError) {
-      return res.status(400).json({ success: false, data: null, error: err.errors[0].message });
+      return handleValidationError(err, res);
     }
     next(err);
   }
@@ -257,7 +276,7 @@ async function chatHandler(req, res, next) {
     });
   } catch (err) {
     if (err instanceof z.ZodError) {
-      return res.status(400).json({ success: false, data: null, error: err.errors[0].message });
+      return handleValidationError(err, res);
     }
     next(err);
   }

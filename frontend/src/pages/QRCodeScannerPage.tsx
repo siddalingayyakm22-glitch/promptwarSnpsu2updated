@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { QrCode, Search, Upload, AlertTriangle, FileText, CheckCircle2 } from 'lucide-react';
+import { QrCode, Search, Upload, FileText } from 'lucide-react';
 import { api } from '../services/api';
-import { ScanResult } from '../types';
+import type { ScanResult } from '../types';
+import { PageHeader } from '../components/PageHeader';
+import { LoadingSkeleton } from '../components/LoadingSkeleton';
+import { AlertMessage } from '../components/AlertMessage';
 import { RiskScoreMeter } from '../components/RiskScoreMeter';
 import { EvidencePanel } from '../components/EvidencePanel';
 import { RecommendationsBox } from '../components/RecommendationsBox';
@@ -57,8 +60,9 @@ export const QRCodeScannerPage: React.FC = () => {
         base64Image: base64Image || undefined
       });
       setResult(data);
-    } catch (err: any) {
-      setError(err.message || 'Failed to complete QR analysis.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to complete QR analysis.';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -70,29 +74,28 @@ export const QRCodeScannerPage: React.FC = () => {
       const rep = await api.exportReport(result.scanId);
       setReportMarkdown(rep.markdown);
       setIsReportOpen(true);
-    } catch (err: any) {
-      alert('Could not generate export report: ' + err.message);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Report export failed';
+      setError('Could not generate export report: ' + msg);
     }
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-          <QrCode size={24} color="var(--color-safe)" />
-          <h1 style={{ fontSize: '24px', fontWeight: 800 }}>QR Code Phishing (Quishing) Scanner</h1>
-        </div>
-        <p style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
-          Inspects concealed destinations inside QR codes before you scan them on your phone. Prevents accidental redirects to credential harvesters or fraudulent UPI payment requests.
-        </p>
-      </div>
+      <PageHeader
+        title="QR Code Phishing (Quishing) Scanner"
+        description="Inspects concealed destinations inside QR codes before you scan them on your phone. Prevents accidental redirects to credential harvesters or fraudulent UPI payment requests."
+        icon={QrCode}
+        iconColor="var(--color-safe)"
+      />
 
-      <div className="cyber-card">
+      <section className="cyber-card" aria-labelledby="qr-form-heading">
+        <h2 id="qr-form-heading" className="sr-only">QR Code Inspection Form</h2>
         <div className="grid-2" style={{ gap: '20px', marginBottom: '16px' }}>
           {/* Method A: Image Upload */}
           <div style={{ border: '2px dashed var(--border-color)', borderRadius: 'var(--radius-md)', padding: '24px', textAlign: 'center', backgroundColor: 'var(--bg-input)' }}>
-            <Upload size={32} color="var(--color-cyan)" style={{ margin: '0 auto 10px auto' }} />
-            <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>Upload QR Code Image</h4>
+            <Upload size={32} color="var(--color-cyan)" style={{ margin: '0 auto 10px auto' }} aria-hidden="true" />
+            <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>Upload QR Code Image</h3>
             <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px' }}>
               PNG, JPG, or WebP up to 5MB
             </p>
@@ -115,10 +118,11 @@ export const QRCodeScannerPage: React.FC = () => {
 
           {/* Method B: Direct Payload String */}
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            <label style={{ fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+            <label htmlFor="qr-raw-text" style={{ fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
               Or Enter Encoded QR String Directly:
             </label>
             <textarea
+              id="qr-raw-text"
               className="cyber-input"
               style={{ minHeight: '90px', fontFamily: 'var(--font-mono)', fontSize: '12px' }}
               placeholder="e.g. http://netflix-suspended-reactivate.info/update or upi://pay?pa=scammer@upi&am=5000"
@@ -132,6 +136,7 @@ export const QRCodeScannerPage: React.FC = () => {
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Presets:</span>
             <button
+              type="button"
               className="btn btn-secondary"
               style={{ padding: '4px 10px', fontSize: '11px', borderColor: 'rgba(239, 68, 68, 0.4)' }}
               onClick={() => {
@@ -143,6 +148,7 @@ export const QRCodeScannerPage: React.FC = () => {
               Phishing URL QR
             </button>
             <button
+              type="button"
               className="btn btn-secondary"
               style={{ padding: '4px 10px', fontSize: '11px', borderColor: 'rgba(245, 158, 11, 0.4)' }}
               onClick={() => {
@@ -155,28 +161,26 @@ export const QRCodeScannerPage: React.FC = () => {
             </button>
           </div>
 
-          <button className="btn btn-primary" onClick={() => handleScan()} disabled={loading}>
-            <Search size={16} /> Decode & Inspect
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => handleScan()}
+            disabled={loading}
+            aria-label="Decode and Inspect QR Code"
+          >
+            <Search size={16} aria-hidden="true" />
+            <span>{loading ? 'Decoding...' : 'Decode & Inspect'}</span>
           </button>
         </div>
 
-        {error && (
-          <div style={{ marginTop: '12px', color: 'var(--color-highrisk)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <AlertTriangle size={15} /> {error}
-          </div>
-        )}
-      </div>
+        {error && <AlertMessage type="error" message={error} />}
+      </section>
 
-      {loading && (
-        <div className="cyber-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div className="skeleton" style={{ height: '70px', width: '100%' }} />
-          <div className="skeleton" style={{ height: '120px', width: '100%' }} />
-        </div>
-      )}
+      {loading && <LoadingSkeleton label="Decoding image buffer & verifying embedded targets..." />}
 
       {result && !loading && (
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <section aria-label="QR Analysis Results" aria-live="polite">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
             <div>
               <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>DECODED PAYLOAD DESTINATION</span>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', fontWeight: 600, color: 'var(--color-cyan)', wordBreak: 'break-all' }}>
@@ -184,8 +188,15 @@ export const QRCodeScannerPage: React.FC = () => {
               </div>
             </div>
 
-            <button className="btn btn-secondary" onClick={handleExport} style={{ fontSize: '12px' }}>
-              <FileText size={14} /> Export Redacted Report
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={handleExport}
+              style={{ fontSize: '12px' }}
+              aria-label="Export Redacted Report"
+            >
+              <FileText size={14} aria-hidden="true" />
+              <span>Export Redacted Report</span>
             </button>
           </div>
 
@@ -205,7 +216,7 @@ export const QRCodeScannerPage: React.FC = () => {
           <RecommendationsBox
             recommendations={result.recommendations}
           />
-        </div>
+        </section>
       )}
 
       <ReportExportModal
